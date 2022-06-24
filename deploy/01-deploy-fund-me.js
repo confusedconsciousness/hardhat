@@ -1,13 +1,16 @@
 const { network } = require("hardhat");
 
-const { networkConfig, developmentChains } = require("../helper-hardhat-config");
+const {
+  networkConfig,
+  developmentChains,
+} = require("../helper-hardhat-config");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   //   this we will get from hardhat.config.js
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
-  
+
   let ethUsdPriceFeedAddress;
   //   when going for localhost or hardhat we need mocks for AggregatorPriceV3 etc
   if (developmentChains.includes(network.name)) {
@@ -26,7 +29,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     args: [ethUsdPriceFeedAddress], // put price feed address
     log: true,
   });
-  log("-------------------------------------------")
+  log("-------------------------------------------");
 };
 
-module.exports.tags = ["all", "fundme"]
+module.exports.tags = ["all", "fundme"];

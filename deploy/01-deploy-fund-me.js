@@ -4,6 +4,7 @@ const {
   networkConfig,
   developmentChains,
 } = require("../helper-hardhat-config");
+const { verify } = require("../utils/verify");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
@@ -23,12 +24,21 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
   //   what about the localhost? in that scenario there is no price feed address?
   //   we need to create mock contracts, we need to deploy the minimal version of it for local testing
-
+  const args = [ethUsdPriceFeedAddress];
   const fundMe = await deploy("FundMe", {
     from: deployer,
-    args: [ethUsdPriceFeedAddress], // put price feed address
+    args: args, // put price feed address
     log: true,
+    waitConfirmations: network.config.blockConfirmations || 1,
   });
+
+  if (
+    !developmentChains.includes(network.name) &&
+    process.env.ETHERSCAN_API_KEY
+  ) {
+    await verify(fundMe.address, args);
+  }
+
   log("-------------------------------------------");
 };
 

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-error notOwner();
+error FundMe__NotOwner();
 
 import "./lib/PriceConverter.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -19,7 +19,7 @@ contract FundMe {
 
     // modifier
     modifier onlyOwner() {
-        if (msg.sender != i_owner) revert notOwner();
+        if (msg.sender != i_owner) revert FundMe__NotOwner();
         _;
     }
 
@@ -72,5 +72,13 @@ contract FundMe {
 
     function getPriceFeed() public view returns (AggregatorV3Interface) {
         return s_priceFeed;
+    }
+
+    function getAddressToAmountFunded(address _address)
+        public
+        view
+        returns (uint256)
+    {
+        return s_addressToAmountFunded[_address];
     }
 }

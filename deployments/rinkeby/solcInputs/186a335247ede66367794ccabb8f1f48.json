@@ -1,0 +1,41 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/FundMe.sol": {
+      "content": "// SPDX-License-Identifier: MIT\n\npragma solidity ^0.8.4;\n\nerror FundMe__NotOwner();\n\nimport \"./lib/PriceConverter.sol\";\nimport \"@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol\";\n\ncontract FundMe {\n    //   we'll use library for price conversion\n    using PriceConverter for uint256;\n\n    uint256 public constant MINIMUM_USD = 50 * 1e18;\n    address private immutable i_owner;\n    address[] s_funders;\n    mapping(address => uint256) private s_addressToAmountFunded;\n    AggregatorV3Interface private s_priceFeed;\n\n    // modifier\n    modifier onlyOwner() {\n        if (msg.sender != i_owner) revert FundMe__NotOwner();\n        _;\n    }\n\n    // constructor\n    constructor(address priceFeed) {\n        s_priceFeed = AggregatorV3Interface(priceFeed);\n        i_owner = msg.sender;\n    }\n\n    receive() external payable {\n        fund();\n    }\n\n    fallback() external payable {\n        fund();\n    }\n\n    function fund() public payable {\n        require(\n            msg.value.getConversionRate(s_priceFeed) >= MINIMUM_USD,\n            \"You need to send more eth\"\n        );\n        s_addressToAmountFunded[msg.sender] += msg.value;\n        s_funders.push(msg.sender);\n    }\n\n    function withdraw() public payable onlyOwner {\n        for (uint256 index = 0; index < s_funders.length; index++) {\n            address funder = s_funders[index];\n            s_addressToAmountFunded[funder] = 0;\n        }\n\n        s_funders = new address[](0);\n        (bool success, ) = i_owner.call{value: address(this).balance}(\"\");\n        require(success);\n    }\n\n    function cheaperWithdraw() public payable onlyOwner {\n        // reading and writing to storage takes a ton of gas\n        // so we will read it once and bring it in memory, reading from memory is cheaper\n        address[] memory funders = s_funders; // s signifies storage\n        for (uint256 index = 0; index < funders.length; ++index) {\n            address funder = funders[index]; // reading from memory\n            // mapping can't be brought to memory for the time being\n            s_addressToAmountFunded[funder] = 0;\n        }\n\n        s_funders = new address[](0);\n        (bool success, ) = i_owner.call{value: address(this).balance}(\"\");\n        require(success);\n    }\n\n    // getters\n    function getVersion() public view returns (uint256) {\n        return s_priceFeed.version();\n    }\n\n    function getFunder(uint256 index) public view returns (address) {\n        return s_funders[index];\n    }\n\n    function getOwner() public view returns (address) {\n        return i_owner;\n    }\n\n    function getPriceFeed() public view returns (AggregatorV3Interface) {\n        return s_priceFeed;\n    }\n\n    function getAddressToAmountFunded(address _address)\n        public\n        view\n        returns (uint256)\n    {\n        return s_addressToAmountFunded[_address];\n    }\n}\n"
+    },
+    "contracts/lib/PriceConverter.sol": {
+      "content": "// SPDX-License-Identifier: MIT\n\npragma solidity ^0.8.4;\n\nimport \"@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol\";\n\nlibrary PriceConverter {\n    /**\n    This function gets us the price of ETH/USD from chainlink oracle,\n    to execute this function we must provide some LINK token\n     */\n    function getPrice(AggregatorV3Interface priceFeed)\n        internal\n        view\n        returns (uint256)\n    {\n        // this function should take an address no?\n        (, int256 price, , , ) = priceFeed.latestRoundData();\n        return uint256(price * 1e10);\n    }\n\n    function getConversionRate(\n        uint256 ethAmount,\n        AggregatorV3Interface priceFeed\n    ) internal view returns (uint256) {\n        uint256 ethPriceInUSD = getPrice(priceFeed);\n\n        uint256 ethAmountInUSD = (ethPriceInUSD * ethAmount) / 1e18;\n        return ethAmountInUSD;\n    }\n}\n"
+    },
+    "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ninterface AggregatorV3Interface {\n  function decimals() external view returns (uint8);\n\n  function description() external view returns (string memory);\n\n  function version() external view returns (uint256);\n\n  // getRoundData and latestRoundData should both raise \"No data present\"\n  // if they do not have data to report, instead of returning unset values\n  // which could be misinterpreted as actual reported values.\n  function getRoundData(uint80 _roundId)\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n\n  function latestRoundData()\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}

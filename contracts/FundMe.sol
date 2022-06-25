@@ -57,6 +57,21 @@ contract FundMe {
         require(success);
     }
 
+    function cheaperWithdraw() public payable onlyOwner {
+        // reading and writing to storage takes a ton of gas
+        // so we will read it once and bring it in memory, reading from memory is cheaper
+        address[] memory funders = s_funders; // s signifies storage
+        for (uint256 index = 0; index < funders.length; ++index) {
+            address funder = funders[index]; // reading from memory
+            // mapping can't be brought to memory for the time being
+            s_addressToAmountFunded[funder] = 0;
+        }
+
+        s_funders = new address[](0);
+        (bool success, ) = i_owner.call{value: address(this).balance}("");
+        require(success);
+    }
+
     // getters
     function getVersion() public view returns (uint256) {
         return s_priceFeed.version();
